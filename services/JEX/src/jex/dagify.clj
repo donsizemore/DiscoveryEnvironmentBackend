@@ -203,6 +203,16 @@
     (join "\n" (map (partial dc-rm uuid) data-containers))
     ""))
 
+(defn- dc-export
+  [uuid dc-map]
+  (str "docker export -o logs/" (volumes-from-name uuid (:name_prefix dc-map)) " " (volumes-from-name uuid (:name_prefix dc-map))))
+
+(defn data-containers-export
+  [{uuid :uuid data-containers :data-containers :as condor-map}]
+  (if (pos? (count data-containers))
+    (join "\n" (map (partial dc-export uuid) data-containers))
+    ""))
+
 (defn script
   "Takes in an analysis map that has been processed by
    (jex.incoming-xforms/transform) and turns it into a shell script
@@ -231,6 +241,9 @@
      (join "" (map docker-pull (seq (:container-images analysis-map))))
      (data-containers-create analysis-map)
      (join "\n" (map script-line (jobs-in-order analysis-map)))
+     "echo exporting containers\n"
+     (data-containers-export analysis-map) "\n"
+     "echo removing containers\n"
      (data-containers-rm analysis-map) "\n"
      "hostname\n"
      "ps aux\n"
